@@ -10,6 +10,7 @@ Everything about the desktop shell, the offline layer, and the sales write path.
 | Build / sync / installers | **Done** | [SETUP](SETUP.md) |
 | Offline session + settings + reads | **Done** | [OFFLINE](OFFLINE.md) |
 | Offline sales (outbox + `log_sale`) | **Done** | [OFFLINE-SALES-PLAN](OFFLINE-SALES-PLAN.md) |
+| Desktop-native behaviours (print, links, downloads, camera, deep-link reload) | **Unverified** | [ROADMAP](ROADMAP.md) |
 | Write-path study (all 119 call sites) | **Done** | [WRITE-PATHS](WRITE-PATHS.md) |
 | Expenses / stock / orders / invoices offline | **Not started** | [ROADMAP](ROADMAP.md) |
 | Dashboard/Reports pending overlay | **Not started** | [ROADMAP](ROADMAP.md) |

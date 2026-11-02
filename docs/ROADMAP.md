@@ -11,6 +11,19 @@
 - Write-path study of all 119 client write call sites and the relevant DB
   objects.
 
+## Desktop-native behaviours (verify or fix first)
+
+These are not missing shell features so much as **unverified in the release**,
+and each could block daily use:
+
+| Item | Current state | Next step |
+|---|---|---|
+| Reload / deep link on a non-root route | Unverified. `BrowserRouter` + the Tauri asset protocol may 404 on `/inventory`. | Test the release; add a Tauri SPA fallback or a HashRouter build flag in keel. |
+| Printing receipts/invoices | `window.print()` in WebView2, unverified. | Test; add a Tauri print/save-PDF path if needed. |
+| External links (WhatsApp, website, help) | `window.open(...)`; `tauri-plugin-opener` is installed but unused. | Bridge to the opener plugin or configure a window-open policy. |
+| CSV/PDF/data exports | Blob `<a download>`, unverified. | Test; add a save dialog / downloads folder via Tauri. |
+| Camera barcode scanning | `getUserMedia` via `html5-qrcode`, unverified. | Test the WebView2 camera permission; add a policy if needed. |
+
 ## Next, in order
 
 ### 1. Full E2E sync against a throwaway shop
@@ -94,6 +107,22 @@ Single table, client-supplied uuid, no dependent rows.
 
 Low-frequency, high-conflict, often depends on an online service. Keep
 online-only unless there is a concrete need.
+
+## Remaining offline reads
+
+Cached today: Overview, Inventory, Sales and the settings snapshot. Still
+network-only:
+
+- Finance (today's revenue/payment split).
+- Customers.
+- Orders / Services.
+- Reports (especially the server-side profit margins).
+- Invoices.
+- Stock History.
+- Marketing / Website / Queue (probably not worth caching).
+
+Use `useOfflineQuery` page by page, as Inventory and Sales do, and decide for
+each whether the data is genuinely useful offline.
 
 ## Open decisions
 
