@@ -4,7 +4,8 @@ A Tauri v2 shell that packages the Keel web dashboard as a Windows desktop app.
 
 **The UI is not written here.** Every page, style and data access rule lives in
 `../keel`. This repository owns the desktop shell, the packaging, and the
-offline layer that ships inside Keel's built output.
+documentation and verification of the offline layer that ships inside Keel's
+built output.
 
 ## How it fits together
 
