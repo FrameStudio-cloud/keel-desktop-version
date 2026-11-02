@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Tauri / Rust
+src-tauri/target/
+target/
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Env
+.env
+.env.local
