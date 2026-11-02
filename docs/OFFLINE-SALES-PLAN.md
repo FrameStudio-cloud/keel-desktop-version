@@ -1,5 +1,12 @@
 # Offline sales — first slice
 
+> **Status:** built and shipped in the 2 Nov release. The migration is applied
+> live. See [SESSION-LOG](SESSION-LOG.md) for the build record and
+> [RUNBOOK](RUNBOOK.md) for the apply/verify/test steps.
+>
+> Keel-side counterpart:
+> `../keel/docs/keel-ecosystem/Features (Keel)/Offline Desktop.md`.
+
 Decisions already taken:
 
 - `log_sale` RPC: **approved**.

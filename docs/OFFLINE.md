@@ -1,9 +1,13 @@
-# Offline mode — v1
+# Offline reads — v1
+
+> Offline **sales** are documented separately in
+> [OFFLINE-SALES-PLAN.md](OFFLINE-SALES-PLAN.md). This file covers the read
+> cache, the session and the settings snapshot.
 
 ## Goal
 
-Open the desktop app with no internet, stay signed in, and see the data the shop
-last saw. No offline writes in this version.
+Open the desktop app with no internet, stay signed in, and read the data the shop
+last saw. Sales can also be queued; see the sales plan.
 
 ## Scope
 
@@ -13,12 +17,12 @@ last saw. No offline writes in this version.
 - Cached `shop_id` and settings snapshot, applied before the network is touched.
 - Cached reads for **Overview**, **Inventory** and **Sales**.
 - An offline indicator with the time the cache was last written.
-- Web deployment behaviour unchanged (the layer is gated on the Tauri runtime).
+- The read cache is gated on the Tauri runtime, so the deployed web app keeps its
+  network-first reads. (The sales outbox is not gated; see its doc.)
 
-**Not included (next phase)**
+**Not included**
 
-- Queued sales, expenses or stock adjustments.
-- Any database change.
+- Offline expenses, stock adjustments, orders or invoices.
 - Signing in for the first time without internet.
 - Cached reads for Finance, Customers, Orders/Services, Reports, Settings,
   Invoices, Inbox, Assistant or Marketing.
@@ -188,24 +192,30 @@ Observed: **5 products**, **8 sales**, `OLFATTA / Laundry Pro Live`, banner
 - The full Vitest suite exceeded 10 minutes on this machine and was stopped; the
   affected subset is green.
 
-## Deferred: offline writes
+## Sales writes are built
 
-See [`WRITE-PATHS.md`](WRITE-PATHS.md) for the full read-only study of every
-write surface, the existing queue's defects, and the database rules that decide
-what can be queued.
+Sales were the first offline-write slice. See
+[`OFFLINE-SALES-PLAN.md`](OFFLINE-SALES-PLAN.md) for the `log_sale` contract, the
+IndexedDB outbox, the pending UI and verification.
 
-The next phase needs more than a queue. Before writing it:
+Other write paths remain online-only:
+[`WRITE-PATHS.md`](WRITE-PATHS.md) has the full classification and
+[`ROADMAP.md`](ROADMAP.md) has the order. In short:
+
+- **App-side queue possible:** expenses, products, customers, services,
+  catalogue, notification state.
+- **Needs a server RPC:** stock adjustments, orders, invoices, invoice payments.
+- **Must stay online:** auth, Paystack/collections/refunds, WhatsApp/Telegram,
+  Google Calendar, storefront deploy, email, AI, social publishing.
+
+The rules for any future write slice:
 
 1. **A durable outbox** in IndexedDB (not localStorage), with client-generated
-   UUIDs and no 24-hour deletion.
-2. **An idempotent server operation** for a sale — one RPC that writes the sale,
-   decrements stock and is safe to replay. Without it, a retry after a partial
-   failure can create two sales, and an absolute `newStock` can overwrite
-   another device's sale.
+   ids and no 24-hour deletion.
+2. **An idempotent server operation** for multi-table or money writes.
 3. **Delta stock updates**, not absolute values.
-4. **Optimistic UI** so the till reflects an offline sale immediately, marked
-   pending until acknowledged.
-5. **A database migration**, which was explicitly deferred and needs approval.
+4. **Optimistic UI**, marked pending until acknowledged.
+5. **A reviewed migration**, applied and tested in a rollback transaction.
 
 Do not start with the queue alone. A queue without idempotency is a duplicate
 sale waiting for a bad connection.

@@ -81,9 +81,25 @@ The full write-path study is in [`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md).
 │   └── Cargo.toml
 ├── dist/                     # generated: the Keel web build (git-ignored)
 ├── docs/
-│   └── OFFLINE.md            # offline design + verification
+│   ├── README.md             # documentation index
+│   ├── ARCHITECTURE.md       # shell + read/write architecture
+│   ├── SETUP.md              # prerequisites, dev, build
+│   ├── OFFLINE.md            # read cache + session/settings
+│   ├── OFFLINE-SALES-PLAN.md # log_sale + outbox + pending UI
+│   ├── WRITE-PATHS.md        # all write surfaces + study
+│   ├── RUNBOOK.md            # apply/verify/test/rebuild
+│   ├── ROADMAP.md            # next slices + decisions
+│   ├── SESSION-LOG.md        # dated build log
+│   └── sql/
+│       └── verify-log-sale.sql
 └── package.json              # sync / build / tauri scripts
 ```
+
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md). It indexes the architecture, setup,
+read cache, sales write path, the full write-path study, the runbook and the
+roadmap.
 
 ## Configuration
 

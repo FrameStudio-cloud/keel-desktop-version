@@ -1,7 +1,12 @@
 # Write paths — study before offline writes
 
+> **Status:** this was the read-only study. The **sales** slice has since been
+> built — see [OFFLINE-SALES-PLAN](OFFLINE-SALES-PLAN.md). Expenses, stock,
+> orders and invoices remain on their current paths; the order is in
+> [ROADMAP](ROADMAP.md). The analysis below is unchanged.
+
 Read-only analysis of Keel's write surfaces, the existing queue, and the database
-rules that decide what can safely be queued. No code was changed.
+rules that decide what can safely be queued.
 
 ## Executive summary
 
