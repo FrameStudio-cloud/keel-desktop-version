@@ -317,23 +317,52 @@ Why sales first: highest business value, append-only, already has a client
 `batch_id`, and the receipt is local. It is the smallest change that makes the
 desktop app genuinely useful without internet.
 
-## Open decisions
+## Why the sale path is legacy (from the docs)
 
-1. **Approve the database change?** The sale slice needs one `log_sale` RPC. It
-   does not need a new table or column, and can use an advisory lock on
-   `batch_id` instead of a new unique index.
-2. **Scope:** sales only first, or sales + expenses (the latter is app-side only,
-   so it is cheap)?
-3. **Pending visibility:** merge pending rows into lists, or only show a queue
-   drawer? Merging is more work but avoids a sale that "disappears" after its
-   receipt.
-4. **Oversell policy:** allow negative stock and warn, or block the sync of a
-   sale that would oversell? The database allows negative; blocking needs a
-   server rule.
-5. **Configuration:** confirm settings, banners, page content, chat config and
-   social stay online-only for this phase.
-6. **Security fix:** treat the `create_invoice` / `record_invoice_payment`
-   shop-ownership gap as part of the invoice RPC work, or as a separate fix?
+There is no document that says "we chose not to add an RPC for sales." The
+recorded history explains how it happened:
+
+- `Keel Narrative/02 - Architecture Decisions.md` records the original decision
+  as **"Bypass GoTrueClient, disable RLS, use app-level multi-tenancy"**, with
+  "all queries already filter by `shop_id`". Sales were built in that era as a
+  direct two-step write.
+- `docs/keel-ecosystem/Supabase/RPC Functions.md` lists every RPC and why it
+  exists (atomic invoice number, order + items in one transaction, row-locked
+  payment). A normal sale is absent: it had no server-allocated number and was
+  treated as a simple append.
+- `docs/team-credit-plan.md` ground rule 3 records that "sales/stock/expenses
+  flow through `writeQueue` (localStorage)", while ground rule 4 says all money
+  writes should go through locked, idempotent `SECURITY DEFINER` RPCs. The plan
+  then designed `add_credit_charge(...)` — atomic tab-sale lines, shared
+  `batch_id`, relative stock decrement, `entry_key` idempotency — and a
+  `logSaleCredit` queue case calling it. That was **credit sales only**; the
+  normal sale path stayed on the queue. The credit book was later removed.
+- `Keel Ecosystem/Features (Keel)/Keel Assistant.md` warns that
+  **"only `log_sale` is atomic and idempotent"** (the assistant's
+  `assistant_log_sale`), while the other assistant writes go directly through
+  PostgREST. The author knew the normal path was not guarded.
+- Offline was always planned as a queue, not an RPC sync
+  (`Keel Architecture.md`: "Offline mode — Enhanced service worker + IndexedDB
+  queue"; `Keel Narrative/04 - The Future.md`: "Service worker cache for POS
+  when internet drops").
+
+So `log_sale` is a **retrofit of a pattern that already exists** in the codebase
+(`assistant_log_sale`, and the removed `add_credit_charge`), not a reversal of a
+deliberate sales design.
+
+## Decisions taken (2 Nov)
+
+1. **Database change approved:** one `log_sale` RPC, no table or column change;
+   idempotency by an advisory lock on `batch_id`.
+2. **Scope:** sales only first. Expenses and stock adjustments follow.
+3. **Pending visibility:** merged into the Sales list with a badge; the receipt
+   prints "PENDING SYNC".
+4. **Oversell:** allow negative stock and warn; never reject a real sale.
+5. **Configuration:** settings, banners, page content, chat config, social and
+   integrations stay online-only for this phase.
+6. **Invoice security gap:** `create_invoice` / `record_invoice_payment` still
+   trust the caller's ids. Treat fixing that as part of the invoice RPC work,
+   not this slice.
 
 ## Appendix: exact write call sites
 
@@ -341,10 +370,12 @@ The scan of `src/**/*.{js,jsx}` found **119 write call sites**. The ones relevan
 to this phase:
 
 **Queued**
-- `src/lib/writeQueue.js` — `logSale`, `addProduct`, `updateProduct`,
-  `deleteProduct`, `adjustStock` (plus dead `createInvoice`,
-  `recordInvoicePayment`).
-- `src/lib/saleWriter.js` — one `logSale` per cart item, shared `batch_id`.
+- `src/lib/writeQueue.js` — `addProduct`, `updateProduct`, `deleteProduct`,
+  `adjustStock` (plus dead `createInvoice`, `recordInvoicePayment`). The old
+  `logSale` case remains only as a fallback; pending items are adopted by the
+  sales outbox on start.
+- `src/lib/saleWriter.js` — `commitProductSales` calls `log_sale` once per cart
+  online, or enqueues to the durable sales outbox offline.
 - `src/components/AddProductModal.jsx`, `EditProductModal.jsx`,
   `StockAdjustModal.jsx`, `InventorySheet.jsx`, `PasteImportModal.jsx`,
   `src/lib/importProducts.js`, `src/pages/Inventory.jsx` — enqueue sites.

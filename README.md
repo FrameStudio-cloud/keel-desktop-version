@@ -51,19 +51,22 @@ Later builds are incremental.
 
 ## Offline behaviour
 
-Version 1 covers **staying signed in and reading the last data**:
+Version 1 covers **staying signed in, reading the last data, and queuing counter
+sales**:
 
 - the session survives a failed token refresh;
 - `shop_id` and the settings snapshot are cached and applied before any network
   request;
 - Overview, Inventory and Sales read from an IndexedDB cache on launch;
+- a sale is written through one atomic, idempotent `log_sale` RPC; when offline
+  it goes to a durable outbox and replays on reconnect, with a "Pending sync"
+  badge in the Sales list and on the receipt;
 - an "Offline — showing saved data" pill appears when the machine is offline.
 
-It does **not** queue writes yet. Recorded sales, expenses and stock changes
-still require the network. See [`docs/OFFLINE.md`](docs/OFFLINE.md) for the
-design, cache keys, verification procedure and the deferred write plan, and
-[`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md) for the read-only study of every
-write path before we change it.
+Expenses, stock adjustments, orders and invoices still require the network. See
+[`docs/OFFLINE.md`](docs/OFFLINE.md) for the read cache, and
+[`docs/OFFLINE-SALES-PLAN.md`](docs/OFFLINE-SALES-PLAN.md) for the sales slice.
+The full write-path study is in [`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md).
 
 ## Repository layout
 
