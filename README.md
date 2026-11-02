@@ -61,7 +61,9 @@ Version 1 covers **staying signed in and reading the last data**:
 
 It does **not** queue writes yet. Recorded sales, expenses and stock changes
 still require the network. See [`docs/OFFLINE.md`](docs/OFFLINE.md) for the
-design, cache keys, verification procedure and the deferred write plan.
+design, cache keys, verification procedure and the deferred write plan, and
+[`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md) for the read-only study of every
+write path before we change it.
 
 ## Repository layout
 

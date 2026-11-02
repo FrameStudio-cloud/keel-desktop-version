@@ -190,6 +190,10 @@ Observed: **5 products**, **8 sales**, `OLFATTA / Laundry Pro Live`, banner
 
 ## Deferred: offline writes
 
+See [`WRITE-PATHS.md`](WRITE-PATHS.md) for the full read-only study of every
+write surface, the existing queue's defects, and the database rules that decide
+what can be queued.
+
 The next phase needs more than a queue. Before writing it:
 
 1. **A durable outbox** in IndexedDB (not localStorage), with client-generated
