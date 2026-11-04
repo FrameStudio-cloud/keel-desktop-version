@@ -5,23 +5,40 @@
 | Tool | Required | Notes |
 |---|---|---|
 | Node | 20.19+ or 22.12+ | Tested on 24.14 |
-| pnpm | any recent | All Node packages use pnpm |
+| pnpm | any recent | This repo uses pnpm |
+| npm | ships with Node | Keel itself is an npm project (`package-lock.json`) |
 | Rust | stable | `cargo` + `rustc` on PATH |
 | MSVC build tools | 2022 | Required by the Rust linker on Windows |
 | WebView2 | bundled with Windows 10/11 | Tauri's runtime |
 | Tauri CLI | `@tauri-apps/cli` devDependency | Use `pnpm tauri`; no global install |
 
-The **Keel web repo** (`../keel`) must already have its own `node_modules` and a
-`.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The desktop sync
-runs `vite build` there; the Vite config throws if those are missing. The desktop
+The **Keel web repo** must already have its own `node_modules` and a `.env` with
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The desktop sync runs
+`vite build` there; the Vite config throws if those are missing. The desktop
 repo has no `.env` of its own.
+
+By default that repo is the sibling folder `../keel`. Any other location works
+by setting `KEEL_ROOT` (absolute, or relative to this repo):
+
+```bash
+KEEL_ROOT=C:/code/keel pnpm sync
+```
+
+CI uses this: it checks Keel out into `./keel` inside the workspace and sets
+`KEEL_ROOT=keel`.
 
 ## Install
 
 ```bash
 cd keel-desktop
 pnpm install
+
+cd ../keel
+npm ci
 ```
+
+The desktop repo has no runtime dependencies of its own beyond the Tauri CLI;
+Keel's install is what produces the UI that gets packaged.
 
 ## Commands
 
@@ -35,16 +52,17 @@ pnpm build       # sync + release build + MSI/NSIS
 
 `scripts/sync-web.mjs`:
 
-1. Verifies `../keel` and `../keel/node_modules` exist.
-2. Runs `pnpm exec vite build` in `../keel`.
-3. Deletes `./dist`.
-4. Copies `../keel/dist` into `./dist`.
-5. Renames any asset filename containing spaces and rewrites references in the
+1. Resolves the Keel root: `KEEL_ROOT` if set, otherwise the sibling `../keel`.
+2. Verifies that root and its `node_modules` exist.
+3. Runs `pnpm exec vite build` there.
+4. Deletes `./dist`.
+5. Copies `<keel>/dist` into `./dist`.
+6. Renames any asset filename containing spaces and rewrites references in the
    copied JS/CSS/HTML. (Tauri's asset server returns `index.html` for a path with
    a space; the login hero image was broken without this.)
-6. Fails loudly if the build fails or produces no `dist`.
+7. Fails loudly if the build fails or produces no `dist`.
 
-It never modifies `../keel`'s source or its `dist`.
+It never modifies the Keel source or its `dist`.
 
 ### `pnpm tauri dev`
 
@@ -69,6 +87,42 @@ src-tauri/target/release/bundle/nsis/Keel_0.1.0_x64-setup.exe
 
 The first release build compiles ~349 Rust crates (15–20 minutes on this
 machine). Later builds are incremental.
+
+## CI releases
+
+`.github/workflows/release.yml` produces the installer without a local Rust
+toolchain. Two triggers:
+
+- a `v*` tag — builds and publishes a GitHub release with the installers;
+- `workflow_dispatch` — builds and uploads artifacts only, with optional
+  `version` and `keel_ref` inputs.
+
+What it does:
+
+1. Checks this repo out, then `FrameStudio-cloud/keel` into `./keel`.
+2. Installs desktop deps with `pnpm install --frozen-lockfile` and Keel deps with
+   `npm ci` (Keel ships `package-lock.json`; the desktop repo uses pnpm).
+3. `node scripts/stamp-version.mjs <version>` — writes the tag version into
+   `src-tauri/tauri.conf.json` and the `[package]` version in `Cargo.toml`.
+   `v0.2.0` becomes `0.2.0`, so the installer is `Keel_0.2.0_x64_en-US.msi`.
+4. `pnpm build` with `KEEL_ROOT=keel`.
+5. Uploads the MSI, the NSIS setup and `BUILD-INFO.txt` (desktop commit, Keel
+   commit, Keel ref, UTC timestamp).
+
+Repository secrets:
+
+| Secret | Required | Purpose |
+|---|---|---|
+| `KEEL_REPO_TOKEN` | Yes | Fine-grained PAT, **Contents: read** on `FrameStudio-cloud/keel`. It is private, so the runner cannot use its own token. |
+| `VITE_SUPABASE_URL` | Yes | Passed to the Keel build; Vite bakes it into the bundle. |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Same. The anon key is public by design, but it is still supplied as a secret so no value is committed. |
+
+The workflow fails fast with a `::error::` annotation naming whichever secret is
+missing, rather than failing later inside Vite with a bare
+`Missing VITE_SUPABASE_URL`.
+
+Local builds are unchanged: they read `../keel/.env`, so the secrets are only
+needed for CI.
 
 ## Tauri configuration
 
@@ -108,8 +162,8 @@ environment file in the desktop repo.
 
 | Symptom | Cause / fix |
 |---|---|
-| `Keel web app not found` | `../keel` is missing; the repo expects the sibling folder. |
-| `Keel node_modules not found` | Run `pnpm install` in `../keel`. |
+| `Keel web app not found` | The sibling `keel` folder is missing. Clone it next to this repo, or set `KEEL_ROOT` to its path. |
+| `Keel node_modules not found` | Run `pnpm install` in the Keel checkout (`KEEL_ROOT` if set). |
 | `vite build failed` / missing env | Keel's `.env` lacks `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`. |
 | Stale UI in dev | Run `pnpm sync`, then reload/restart dev. |
 | Fresh profile shows the landing page | Expected; the session is per WebView profile/origin. Sign in. |

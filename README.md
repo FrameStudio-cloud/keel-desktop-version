@@ -26,7 +26,8 @@ built output.
 | Tool | Required | Notes |
 |---|---|---|
 | Node | 20.19+ or 22.12+ | Tested on 24.14 |
-| pnpm | any recent | All Node packages use pnpm |
+| pnpm | any recent | This repo's Node packages use pnpm |
+| npm | ships with Node | Keel is an npm project (`package-lock.json`) |
 | Rust | stable | `cargo` + `rustc` on PATH |
 | MSVC build tools | 2022 | Required by the Rust linker on Windows |
 | WebView2 | bundled with Windows 10/11 | Tauri's runtime |
@@ -41,6 +42,14 @@ pnpm tauri dev     # run the app against ./dist
 pnpm build         # sync + release build + installers
 ```
 
+The sync looks for a sibling folder named `keel`. If the checkout is somewhere
+else, point it explicitly:
+
+```bash
+KEEL_ROOT=C:/path/to/keel pnpm sync      # bash
+$env:KEEL_ROOT="C:\path\to\keel"; pnpm sync   # PowerShell
+```
+
 Release output:
 
 - `src-tauri/target/release/keel-desktop.exe`
@@ -49,6 +58,29 @@ Release output:
 
 The first release build compiles ~349 Rust crates and takes 15–20 minutes.
 Later builds are incremental.
+
+## Releases
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the
+installer on GitHub and attaches it to a release. Push a tag:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+It checks out `FrameStudio-cloud/keel` next to this repo, stamps the tag version
+into `tauri.conf.json` and `Cargo.toml`, runs `pnpm build`, and uploads the MSI,
+the NSIS installer and a `BUILD-INFO.txt` recording the exact Keel commit. Run
+it manually from the Actions tab to build a specific Keel ref without releasing.
+
+Required repository secrets:
+
+| Secret | Purpose |
+|---|---|
+| `KEEL_REPO_TOKEN` | Fine-grained PAT with **Contents: read** on `FrameStudio-cloud/keel` (it is private) |
+| `VITE_SUPABASE_URL` | Baked into the Keel bundle at build time |
+| `VITE_SUPABASE_ANON_KEY` | Baked into the Keel bundle at build time |
 
 ## Offline behaviour
 
@@ -73,8 +105,12 @@ The full write-path study is in [`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md).
 
 ```
 .
+├── .github/
+│   └── workflows/
+│       └── release.yml       # tag -> installer + GitHub release
 ├── scripts/
-│   └── sync-web.mjs          # build ../keel, refresh ./dist, normalise names
+│   ├── sync-web.mjs          # build ../keel, refresh ./dist, normalise names
+│   └── stamp-version.mjs     # write the tag version into the Tauri manifests
 ├── src-tauri/
 │   ├── src/                  # Rust entry point (Tauri scaffold)
 │   ├── icons/
@@ -121,6 +157,8 @@ before packaging.
 - **Stale UI in dev:** run `pnpm sync`, then reload/restart the dev app. Tauri
   dev serves `dist` over `127.0.0.1:1430`, so a sync is enough — no Rust
   rebuild.
+- **`Keel web app not found`:** the sibling `keel` folder is missing or named
+  differently. Clone it next to this repo, or set `KEEL_ROOT` to its path.
 - **A fresh WebView profile shows the landing page:** that is expected. The
   persisted session is per WebView origin/profile. Use the normal app profile,
   or sign in.

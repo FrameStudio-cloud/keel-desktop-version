@@ -147,6 +147,28 @@ src-tauri/target/release/bundle/nsis/Keel_0.1.0_x64-setup.exe
 `../keel` build. The first release build is slow (Rust/LTO); later builds are
 incremental.
 
+### Ship via CI
+
+CI is the supported path — it always records which Keel commit is inside the
+installer and needs no local Rust toolchain:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The `Release` workflow stamps `0.2.0` into the Tauri manifests, builds against
+`FrameStudio-cloud/keel@main`, and publishes the MSI + NSIS setup to a GitHub
+release. To build a different Keel ref without publishing, run the workflow
+manually from the Actions tab and set `keel_ref`.
+
+Before the first CI run, add the `KEEL_REPO_TOKEN`, `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` secrets — see [SETUP](SETUP.md#ci-releases).
+
+The release notes and the attached `BUILD-INFO.txt` carry the Keel short SHA.
+Use that in incident notes: it is the only reliable way to know what UI a user
+is running.
+
 ## 6. Rollback policy
 
 `log_sale` is additive, but the client depends on it. If you need to roll back:

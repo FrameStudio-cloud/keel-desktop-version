@@ -14,7 +14,16 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(__dirname, "..");
-const keelRoot = resolve(desktopRoot, "..", "keel");
+
+/**
+ * Where the Keel web app lives. Defaults to the sibling "keel" folder, which is
+ * how the repo is laid out on a developer machine. Set KEEL_ROOT (absolute, or
+ * relative to this repo) when the checkout is somewhere else — CI checks Keel
+ * out inside the workspace and sets KEEL_ROOT=keel.
+ */
+const keelRoot = process.env.KEEL_ROOT
+  ? resolve(desktopRoot, process.env.KEEL_ROOT)
+  : resolve(desktopRoot, "..", "keel");
 const keelDist = resolve(keelRoot, "dist");
 const desktopDist = resolve(desktopRoot, "dist");
 
@@ -73,15 +82,25 @@ function normaliseSpaceNames(root) {
   return renames.length;
 }
 
+console.log(`[sync-web] Keel root: ${keelRoot}`);
+
 if (!existsSync(keelRoot)) {
-  fail(`Keel web app not found at ${keelRoot}. Expected a sibling "keel" folder.`);
+  fail(
+    `Keel web app not found at ${keelRoot}.\n` +
+      `Clone FrameStudio-cloud/keel as a sibling folder named "keel", ` +
+      `or point KEEL_ROOT at an existing checkout.`,
+  );
 }
 
 if (!existsSync(resolve(keelRoot, "node_modules"))) {
-  fail(`Keel node_modules not found at ${resolve(keelRoot, "node_modules")}. Run pnpm install in ../keel first.`);
+  fail(
+    `Keel node_modules not found at ${resolve(keelRoot, "node_modules")}. ` +
+      `Run npm ci in ${keelRoot} first (Keel is an npm project).`,
+  );
 }
 
 console.log(`[sync-web] Building Keel web app in ${keelRoot}...`);
+
 const build = spawnSync("pnpm", ["exec", "vite", "build"], {
   cwd: keelRoot,
   stdio: "inherit",

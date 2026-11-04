@@ -8,6 +8,7 @@ Everything about the desktop shell, the offline layer, and the sales write path.
 |---|---|---|
 | Tauri shell + local bundle | **Done** | [SETUP](SETUP.md), [ARCHITECTURE](ARCHITECTURE.md) |
 | Build / sync / installers | **Done** | [SETUP](SETUP.md) |
+| CI release (tag -> installer + release) | **Done** | [SETUP](SETUP.md#ci-releases), [RUNBOOK](RUNBOOK.md#ship-via-ci) |
 | Offline session + settings + reads | **Done** | [OFFLINE](OFFLINE.md) |
 | Offline sales (outbox + `log_sale`) | **Done** | [OFFLINE-SALES-PLAN](OFFLINE-SALES-PLAN.md) |
 | Desktop-native behaviours (print, links, downloads, camera, deep-link reload) | **Unverified** | [ROADMAP](ROADMAP.md) |

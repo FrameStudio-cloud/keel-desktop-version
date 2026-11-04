@@ -9,6 +9,9 @@ target/
 dist/
 dist-ssr/
 
+# A Keel checkout placed inside this repo (CI uses KEEL_ROOT=keel)
+/keel/
+
 # Logs
 *.log
 pnpm-debug.log*
