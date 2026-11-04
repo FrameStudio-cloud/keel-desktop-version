@@ -137,6 +137,10 @@ jobs:
       - name: Build installer
         env:
           KEEL_ROOT: keel
+          # Signing key for the updater bundle (.sig files). Without it
+          # `createUpdaterArtifacts` fails the build instead of shipping an
+          # updater that cannot verify its own downloads.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: pnpm build
 
       # Cheap structural gate before anything is published. The nightly canary
@@ -151,26 +155,26 @@ jobs:
           shopt -s nullglob
           msi=(src-tauri/target/release/bundle/msi/*.msi)
           nsis=(src-tauri/target/release/bundle/nsis/*.exe)
+          sig=(src-tauri/target/release/bundle/nsis/*.exe.sig)
           if [ ${#msi[@]} -eq 0 ] || [ ${#nsis[@]} -eq 0 ]; then
             echo "::error::Expected both an MSI and an NSIS installer under src-tauri/target/release/bundle."
             ls -R src-tauri/target/release/bundle || true
             exit 1
           fi
-          cp "${msi[@]}" "${nsis[@]}" out/
+          if [ ${#sig[@]} -eq 0 ]; then
+            echo "::error::No .sig next to the NSIS installer — createUpdaterArtifacts or TAURI_SIGNING_PRIVATE_KEY is missing."
+            ls -R src-tauri/target/release/bundle || true
+            exit 1
+          fi
+          cp "${msi[@]}" "${nsis[@]}" "${sig[@]}" out/
           {
             echo "version: ${{ steps.version.outputs.value }}"
             echo "keel: ${{ env.KEEL_REPO }}@${{ steps.keel.outputs.sha }} (ref: ${{ env.KEEL_REF }})"
             echo "desktop: ${{ github.repository }}@${GITHUB_SHA::7}"
             echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "updater: signed"
           } > out/BUILD-INFO.txt
           ls -lh out
-
-      - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: keel-desktop-${{ steps.version.outputs.value }}
-          path: out/*
-          retention-days: 14
 
       - name: Write release notes
         if: github.ref_type == 'tag'
@@ -186,7 +190,36 @@ jobs:
             echo "**MSI** — \`Keel_${{ steps.version.outputs.value }}_x64_en-US.msi\`"
             echo
             echo "**NSIS** — \`Keel_${{ steps.version.outputs.value }}_x64-setup.exe\`"
+            echo
+            echo "Installed copies update themselves: the app checks \`latest.json\` on launch."
           } > release-notes.md
+
+      # The updater polls releases/latest/download/latest.json, so it must be
+      # attached to the release alongside the signed NSIS installer.
+      - name: Build updater manifest
+        if: github.ref_type == 'tag'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          sig=$(ls out/*.exe.sig | head -n 1)
+          artifact=$(basename "${sig%.sig}")
+          node scripts/make-latest-json.mjs \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --artifact "$artifact" \
+            --signature-file "$sig" \
+            --notes-file release-notes.md \
+            --out out/latest.json
+          cat out/latest.json
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keel-desktop-${{ steps.version.outputs.value }}
+          path: out/*
+          retention-days: 14
 
       - name: Publish release
         if: github.ref_type == 'tag'

@@ -89,6 +89,59 @@ Optional but recommended: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`,
 them the build succeeds but those features are silently absent from the
 installer.
 
+## Auto-updates
+
+The app checks for updates once on launch, and asks before installing. The
+whole flow lives in the shell (`src-tauri/src/lib.rs`), not in `../keel` — the
+web bundle has no concept of an installed app.
+
+How it works:
+
+1. The updater polls `releases/latest/download/latest.json` from this repo.
+2. If `version` there is newer than the running app, a native dialog offers it.
+3. On install, the signed NSIS installer runs and the app restarts.
+
+Signing is **minisign, not Authenticode** — it proves the update came from a
+build holding the private key, so GitHub (or anyone) cannot tamper with an
+installer in transit. It is unrelated to the code-signing certificate: updates
+work today, unsigned.
+
+The keypair lives at `~/.tauri/keel-desktop-updater.key` (private) and
+`~/.tauri/keel-desktop-updater.key.pub` (public). The public half is committed in
+`tauri.conf.json` under `plugins.updater.pubkey`; the private half is the
+`TAURI_SIGNING_PRIVATE_KEY` repo secret. **Back the private key up somewhere
+safe** — losing it means existing installs can never be updated without a manual
+reinstall.
+
+Cutting an update:
+
+```bash
+git tag v0.1.1          # must be higher than tauri.conf.json's version
+git push origin v0.1.1
+```
+
+The workflow stamps `0.1.1`, builds, and attaches `latest.json` plus
+`Keel_0.1.1_x64-setup.exe.sig` to the release. Installed copies pick it up on
+next launch.
+
+Local release builds need the key in the environment, or Tauri refuses to bundle:
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw "$env:USERPROFILE\.tauri\keel-desktop-updater.key"
+pnpm build
+```
+
+Operational rules:
+
+- **Never delete the newest release.** `releases/latest` resolves to it; removing
+  it breaks the update endpoint for every installed copy.
+- **Mark never a prerelease** for a version users should receive — `latest`
+  ignores prereleases and drafts.
+- Versions must only increase. The updater ignores equal or older versions.
+- Updater artifacts are enabled in `bundle.createUpdaterArtifacts`; turning it
+  off silently stops producing `.sig` files and the workflow will fail on a
+  missing signature on purpose.
+
 ## The Keel contract
 
 The shell only assumes five things about Keel. Break one and the app fails in a
@@ -140,6 +193,7 @@ The full write-path study is in [`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md).
 ├── scripts/
 │   ├── sync-web.mjs          # build ../keel, refresh ./dist, normalise names
 │   ├── stamp-version.mjs     # write the tag version into the Tauri manifests
+│   ├── make-latest-json.mjs  # updater manifest published with each release
 │   └── canary.mjs            # assert the bundle still satisfies the contract
 ├── src-tauri/
 │   ├── src/                  # Rust entry point (Tauri scaffold)

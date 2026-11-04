@@ -175,3 +175,17 @@ Found by the first canary run (both were live desktop-only bugs):
 - `src/main.jsx` registered `/sw.js` unconditionally; WebView2 keeps a persistent profile, so the shell cache would serve stale UI after a sync.
 
 Both fixed in `keel/src/main.jsx` behind the existing `isDesktop()` flag, so web behaviour is unchanged.
+
+## 4 Nov 2026 - Auto-updates
+
+Added:
+- `src-tauri/src/lib.rs` checks `latest.json` on launch (release builds only), shows a native dialog, and installs with `tauri-plugin-updater`; `tauri-plugin-dialog` supplies the prompt.
+- `bundle.createUpdaterArtifacts` + `plugins.updater` (minisign pubkey, `releases/latest/download/latest.json` endpoint).
+- `scripts/make-latest-json.mjs` builds the manifest from the NSIS `.sig`.
+- Release workflow: passes `TAURI_SIGNING_PRIVATE_KEY`, requires the `.sig` to exist, and publishes `latest.json` with the installers.
+
+Verified locally: `pnpm build` with the key produced `Keel_0.1.0_x64-setup.exe.sig` and the MSI signature, and `make-latest-json.mjs` produced a valid manifest.
+
+Key handling: private key at `~/.tauri/keel-desktop-updater.key`, also stored as the `TAURI_SIGNING_PRIVATE_KEY` repo secret. Losing it means existing installs can never update without a manual reinstall.
+
+Note: `v0.1.0` was built before the updater existed, so it cannot receive `v0.1.1`; that transition needs one manual install.

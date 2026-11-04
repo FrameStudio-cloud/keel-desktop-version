@@ -106,8 +106,11 @@ What it does:
    `src-tauri/tauri.conf.json` and the `[package]` version in `Cargo.toml`.
    `v0.2.0` becomes `0.2.0`, so the installer is `Keel_0.2.0_x64_en-US.msi`.
 4. `pnpm build` with `KEEL_ROOT=keel`.
-5. Uploads the MSI, the NSIS setup and `BUILD-INFO.txt` (desktop commit, Keel
-   commit, Keel ref, UTC timestamp).
+5. Uploads the MSI, the NSIS setup, its `.sig`, `BUILD-INFO.txt` and (on a tag)
+   `latest.json` — the manifest installed apps poll.
+
+The `latest.json` step is not optional for a release: without it the update
+endpoint returns 404 and installed copies never learn about the new version.
 
 Repository secrets:
 
@@ -117,6 +120,7 @@ Repository secrets:
 | `VITE_SUPABASE_URL` | Yes | Passed to the Keel build; Vite bakes it into the bundle. |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Same. The anon key is public by design, but it is still supplied as a secret so no value is committed. |
 | `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`, `VITE_FRAMESTUDIO_SUPABASE_URL`, `VITE_FRAMESTUDIO_SUPABASE_ANON_KEY` | No | Without them the build succeeds but analytics, payments, Google Calendar and the FrameStudio blog are silently absent from the installer. |
+| `TAURI_SIGNING_PRIVATE_KEY` | Yes | Minisign private key for updater artifacts. Without it `createUpdaterArtifacts` fails the build rather than shipping an unverifiable updater. |
 
 The workflow fails fast with a `::error::` annotation naming whichever secret is
 missing, rather than failing later inside Vite with a bare

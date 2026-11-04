@@ -169,6 +169,18 @@ The release notes and the attached `BUILD-INFO.txt` carry the Keel short SHA.
 Use that in incident notes: it is the only reliable way to know what UI a user
 is running.
 
+The same run publishes `latest.json`, which installed copies poll on launch. So
+a release is also an update — with three rules:
+
+- delete the release later and the updater 404s for everyone still on it;
+- a prerelease or draft is invisible to `releases/latest`;
+- the tag version must be higher than the one users have, or the update is
+  ignored.
+
+If an update fails on a user's machine, the app shows the error and keeps
+running the old version; it never half-installs. Ask them for that message
+before doing anything else.
+
 ## 6. Rollback policy
 
 `log_sale` is additive, but the client depends on it. If you need to roll back:

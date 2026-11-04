@@ -10,6 +10,7 @@ Everything about the desktop shell, the offline layer, and the sales write path.
 | Build / sync / installers | **Done** | [SETUP](SETUP.md) |
 | CI release (tag -> installer + release) | **Done** | [SETUP](SETUP.md#ci-releases), [RUNBOOK](RUNBOOK.md#ship-via-ci) |
 | Nightly canary against Keel `main` | **Done** | [`../README.md`](../README.md#the-keel-contract) |
+| Auto-updates (minisign + `latest.json`) | **Done** | [`../README.md`](../README.md#auto-updates) |
 | Offline session + settings + reads | **Done** | [OFFLINE](OFFLINE.md) |
 | Offline sales (outbox + `log_sale`) | **Done** | [OFFLINE-SALES-PLAN](OFFLINE-SALES-PLAN.md) |
 | Desktop-native behaviours (print, links, downloads, camera, deep-link reload) | **Unverified** | [ROADMAP](ROADMAP.md) |

@@ -137,8 +137,9 @@ each whether the data is genuinely useful offline.
    exist from the team feature, but a PIN is a security decision, not a cache.
 5. **Cache retention:** currently unbounded per query key. Add a size/age cap
    before the cache grows with every search.
-6. **Tauri updater:** not configured. Shipping a new build currently needs a
-   manual install.
+6. **Tauri updater:** configured. Minisign-signed NSIS updates are published as
+   `latest.json` and applied on launch. Still open: an in-app "checking…" state,
+   and deciding whether to update silently or always prompt.
 7. **Pending pagination:** the Sales count includes pending batches; at exact
    page-size multiples it can add one empty page. Separate `displayTotal` from
    the server `total` when this is touched.
