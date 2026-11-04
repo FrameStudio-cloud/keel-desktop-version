@@ -1,0 +1,102 @@
+name: Build check
+
+# The nightly canary only tests the web bundle; nothing compiled the Rust shell
+# until a release tag, so a compile break could sit on master indefinitely and
+# only surface when someone cut a release. This builds the shell on every push
+# and pull request, without bundling — fast enough to gate a push.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  KEEL_REPO: FrameStudio-cloud/keel
+  KEEL_REF: main
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+  VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+  VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}
+  VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+  VITE_FRAMESTUDIO_SUPABASE_URL: ${{ secrets.VITE_FRAMESTUDIO_SUPABASE_URL }}
+  VITE_FRAMESTUDIO_SUPABASE_ANON_KEY: ${{ secrets.VITE_FRAMESTUDIO_SUPABASE_ANON_KEY }}
+
+jobs:
+  build:
+    name: Compile the shell
+    runs-on: windows-latest
+    steps:
+      - name: Check out desktop shell
+        uses: actions/checkout@v4
+
+      - name: Check build secrets
+        env:
+          KEEL_REPO_TOKEN: ${{ secrets.KEEL_REPO_TOKEN }}
+        run: |
+          missing=0
+          if [ -z "$KEEL_REPO_TOKEN" ]; then
+            echo "::error::$KEEL_REPO is private. Add a fine-grained PAT with Contents: read as the KEEL_REPO_TOKEN secret."
+            missing=1
+          fi
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY secrets are required."
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Check out Keel web app
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KEEL_REPO }}
+          ref: ${{ env.KEEL_REF }}
+          token: ${{ secrets.KEEL_REPO_TOKEN }}
+          path: keel
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install desktop dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Keel dependencies
+        working-directory: keel
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Build Keel into dist
+        env:
+          KEEL_ROOT: keel
+        run: pnpm sync
+
+      # --no-bundle skips WiX/NSIS: this only has to prove the Rust compiles
+      # against the freshly synced frontend.
+      - name: Compile the shell
+        run: pnpm tauri build --no-bundle
