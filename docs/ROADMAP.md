@@ -18,7 +18,7 @@ and each could block daily use:
 
 | Item | Current state | Next step |
 |---|---|---|
-| Reload / deep link on a non-root route | Unverified. `BrowserRouter` + the Tauri asset protocol may 404 on `/inventory`. | Test the release; add a Tauri SPA fallback or a HashRouter build flag in keel. |
+| Reload / deep link on a non-root route | **Verified safe.** Tauri 2.12.5 `AppManager::get_asset` falls back `exact → path.html → path/index.html → index.html`, so `/inventory` on reload serves `index.html` and `BrowserRouter` takes over. | Add a release smoke test that opens a non-root route if this ever regresses. |
 | Printing receipts/invoices | `window.print()` in WebView2, unverified. | Test; add a Tauri print/save-PDF path if needed. |
 | External links (WhatsApp, website, help) | `window.open(...)`; `tauri-plugin-opener` is installed but unused. | Bridge to the opener plugin or configure a window-open policy. |
 | CSV/PDF/data exports | Blob `<a download>`, unverified. | Test; add a save dialog / downloads folder via Tauri. |

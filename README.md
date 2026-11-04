@@ -38,6 +38,7 @@ built output.
 ```bash
 pnpm install       # install the Tauri CLI
 pnpm sync          # build ../keel and refresh ./dist
+pnpm canary        # verify the synced bundle still works under Tauri rules
 pnpm tauri dev     # run the app against ./dist
 pnpm build         # sync + release build + installers
 ```
@@ -82,6 +83,31 @@ Required repository secrets:
 | `VITE_SUPABASE_URL` | Baked into the Keel bundle at build time |
 | `VITE_SUPABASE_ANON_KEY` | Baked into the Keel bundle at build time |
 
+Optional but recommended: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`,
+`VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`. Without them the build
+succeeds but those features are silently absent from the installer.
+
+## The Keel contract
+
+The shell only assumes five things about Keel. Break one and the app fails in a
+way that is easy to miss, which is what `pnpm canary` exists to catch:
+
+| Assumption | Where it lives |
+|---|---|
+| `dist/index.html` plus its local assets, at relative paths | `tauri.conf.json` → `frontendDist` |
+| No asset filename contains a space | `scripts/sync-web.mjs` |
+| `dist/version.json` is written | Keel's `version-json` Vite plugin |
+| `window.__TAURI_INTERNALS__` / `__TAURI__` remains the desktop flag | `src/lib/offline/flag.js` |
+| No service worker registers inside Tauri | `src/main.jsx` |
+
+Everything else — pages, routes, styles, data access, the offline layer, RPCs —
+is free to change. Those are the only desktop-visible surfaces.
+
+`pnpm canary` checks all five, then loads `/`, `/login`, `/inventory`, `/sales`
+and `/settings` in Chromium with `__TAURI_INTERNALS__` injected, failing on an
+uncaught error, an empty `#root`, or a service worker registration.
+`.github/workflows/canary.yml` runs it nightly against Keel `main`.
+
 ## Offline behaviour
 
 Version 1 covers **staying signed in, reading the last data, and queuing counter
@@ -107,10 +133,12 @@ The full write-path study is in [`docs/WRITE-PATHS.md`](docs/WRITE-PATHS.md).
 .
 ├── .github/
 │   └── workflows/
-│       └── release.yml       # tag -> installer + GitHub release
+│       ├── release.yml       # tag -> installer + GitHub release
+│       └── canary.yml        # nightly check of a fresh Keel build
 ├── scripts/
 │   ├── sync-web.mjs          # build ../keel, refresh ./dist, normalise names
-│   └── stamp-version.mjs     # write the tag version into the Tauri manifests
+│   ├── stamp-version.mjs     # write the tag version into the Tauri manifests
+│   └── canary.mjs            # assert the bundle still satisfies the contract
 ├── src-tauri/
 │   ├── src/                  # Rust entry point (Tauri scaffold)
 │   ├── icons/

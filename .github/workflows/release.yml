@@ -38,6 +38,12 @@ env:
   # bundle, not runtime config.
   VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  # Optional: without these the CI build still works, but analytics, payments or
+  # Google Calendar would be silently absent compared with a local build.
+  VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+  VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+  VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}
+  VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
 jobs:
   build:
@@ -130,6 +136,12 @@ jobs:
         env:
           KEEL_ROOT: keel
         run: pnpm build
+
+      # Cheap structural gate before anything is published. The nightly canary
+      # does the full browser render; this just refuses to ship a bundle whose
+      # assets do not resolve or whose filenames kept their spaces.
+      - name: Canary (structural)
+        run: pnpm canary --no-render
 
       - name: Collect artifacts
         run: |

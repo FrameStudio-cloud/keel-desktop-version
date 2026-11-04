@@ -9,6 +9,9 @@ target/
 dist/
 dist-ssr/
 
+# Canary screenshots on failure
+canary-artifacts/
+
 # A Keel checkout placed inside this repo (CI uses KEEL_ROOT=keel)
 /keel/
 

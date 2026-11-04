@@ -157,3 +157,21 @@ Keel-side documentation added:
 - `docs/keel-ecosystem/Supabase/RPC Functions.md` (added `log_sale`)
 - `docs/keel-ecosystem/Supabase/Migrations.md` (added the migration)
 - `AGENTS.md` (two session entries)
+
+## 4 Nov 2026 - Release pipeline, canary, and the shell/Keel contract
+
+Added to this repo:
+- `scripts/stamp-version.mjs` - tag version into `tauri.conf.json` and `Cargo.toml`.
+- `.github/workflows/release.yml` - `v*` tag builds Keel + shell and publishes MSI/NSIS with a `BUILD-INFO.txt` naming the Keel commit.
+- `.github/workflows/canary.yml` - nightly build against Keel `main`.
+- `scripts/canary.mjs` - bundle contract checks plus a Chromium render of five routes with `__TAURI_INTERNALS__` injected.
+- `KEEL_ROOT` in `scripts/sync-web.mjs` so the Keel checkout does not have to be the sibling folder.
+
+Verified:
+- Deep links are safe. `tauri-2.12.5/src/manager/mod.rs::get_asset` falls back `exact -> path.html -> path/index.html -> index.html`, so `/inventory` on reload serves `index.html` and `BrowserRouter` takes over. ROADMAP updated.
+
+Found by the first canary run (both were live desktop-only bugs):
+- `@vercel/analytics` and `@vercel/speed-insights` request `/_vercel/...`; Tauri's fallback served `index.html` as JS, throwing an uncaught `SyntaxError` on every load.
+- `src/main.jsx` registered `/sw.js` unconditionally; WebView2 keeps a persistent profile, so the shell cache would serve stale UI after a sync.
+
+Both fixed in `keel/src/main.jsx` behind the existing `isDesktop()` flag, so web behaviour is unchanged.

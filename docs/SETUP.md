@@ -116,6 +116,7 @@ Repository secrets:
 | `KEEL_REPO_TOKEN` | Yes | Fine-grained PAT, **Contents: read** on `FrameStudio-cloud/keel`. It is private, so the runner cannot use its own token. |
 | `VITE_SUPABASE_URL` | Yes | Passed to the Keel build; Vite bakes it into the bundle. |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Same. The anon key is public by design, but it is still supplied as a secret so no value is committed. |
+| `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID` | No | Without them the build succeeds but analytics, payments and Google Calendar are silently absent from the installer. |
 
 The workflow fails fast with a `::error::` annotation naming whichever secret is
 missing, rather than failing later inside Vite with a bare
@@ -123,6 +124,35 @@ missing, rather than failing later inside Vite with a bare
 
 Local builds are unchanged: they read `../keel/.env`, so the secrets are only
 needed for CI.
+
+## Canary
+
+`pnpm canary` checks the synced bundle, not the Rust shell, so it needs neither
+Rust nor Tauri. It is the guard against Keel changes that break the desktop app
+without breaking `keel` itself.
+
+Structural checks:
+
+1. `dist/index.html` exists, and every local `src`/`href` it references exists.
+2. No asset filename contains a space.
+3. `dist/version.json` exists with a numeric `buildTime`.
+4. Some built JS still references `__TAURI_INTERNALS__`/`__TAURI__`.
+5. `dist/sw.js` may exist (the web build needs it) but must not register.
+
+Then it serves `dist` with a static server that mirrors Tauri's asset fallback
+and loads `/`, `/login`, `/inventory`, `/sales`, `/settings` in Chromium with
+`__TAURI_INTERNALS__` injected, so the desktop branches actually run. Each route
+must mount a non-empty `#root`, throw no uncaught error, and register no service
+worker. Screenshots go to `canary-artifacts/` on failure.
+
+Run it after any `pnpm sync` when Keel changed something structural: routing,
+the built entry, Vite config, the desktop flag, analytics or service workers.
+
+`--no-render` runs only the structural checks (no Playwright, no browser).
+
+`.github/workflows/canary.yml` runs the full check nightly at 03:00 UTC against
+Keel `main`, plus on demand with an optional `keel_ref`. It needs the same
+`KEEL_REPO_TOKEN` and `VITE_SUPABASE_*` secrets as the release workflow.
 
 ## Tauri configuration
 

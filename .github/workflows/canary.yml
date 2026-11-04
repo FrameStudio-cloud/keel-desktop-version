@@ -1,0 +1,116 @@
+name: Canary
+
+# Runs the shell against the current Keel main every night. The desktop app has
+# no UI code, so Keel changes normally cannot break it — but they can break the
+# assumptions the shell makes (asset layout, the Tauri detection flag, no
+# service worker). This turns that from "found during a release" into "found
+# the next morning".
+#
+# It does not need Rust: it builds the web bundle and renders it in Chromium.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      keel_ref:
+        description: "Keel branch, tag or SHA to build against."
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canary
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  KEEL_REPO: FrameStudio-cloud/keel
+  KEEL_REF: ${{ inputs.keel_ref || 'main' }}
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+  VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+  VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}
+  VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
+jobs:
+  canary:
+    name: Verify a fresh Keel build
+    runs-on: windows-latest
+    steps:
+      - name: Check out desktop shell
+        uses: actions/checkout@v4
+
+      - name: Check build secrets
+        env:
+          KEEL_REPO_TOKEN: ${{ secrets.KEEL_REPO_TOKEN }}
+        run: |
+          missing=0
+          if [ -z "$KEEL_REPO_TOKEN" ]; then
+            echo "::error::$KEEL_REPO is private. Add a fine-grained PAT with Contents: read as the KEEL_REPO_TOKEN secret."
+            missing=1
+          fi
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY secrets are required."
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Check out Keel web app
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KEEL_REPO }}
+          ref: ${{ env.KEEL_REF }}
+          token: ${{ secrets.KEEL_REPO_TOKEN }}
+          path: keel
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install desktop dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Keel dependencies
+        working-directory: keel
+        run: npm ci
+
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Build Keel into dist
+        env:
+          KEEL_ROOT: keel
+        run: pnpm sync
+
+      - name: Run canary
+        run: pnpm canary
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-artifacts
+          path: canary-artifacts/**
+          if-no-files-found: ignore
+          retention-days: 7
