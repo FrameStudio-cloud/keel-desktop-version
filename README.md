@@ -75,6 +75,11 @@ into `tauri.conf.json` and `Cargo.toml`, runs `pnpm build`, and uploads the MSI,
 the NSIS installer and a `BUILD-INFO.txt` recording the exact Keel commit. Run
 it manually from the Actions tab to build a specific Keel ref without releasing.
 
+`.github/workflows/build-check.yml` is the cheaper companion: it compiles the
+shell with `--no-bundle` on every push to `master` and on pull requests, so a
+Rust break is reported in minutes rather than at the next tag. The nightly
+canary does not cover the shell.
+
 Required repository secrets:
 
 | Secret | Purpose |
