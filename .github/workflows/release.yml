@@ -88,7 +88,9 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Matches the machine the app is normally built and tested on. Keel's
+          # engines allow ^20.19 || >=22.12, so 24 is supported.
+          node-version: 24
           cache: pnpm
 
       - name: Install desktop dependencies
