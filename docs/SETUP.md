@@ -116,7 +116,7 @@ Repository secrets:
 | `KEEL_REPO_TOKEN` | Yes | Fine-grained PAT, **Contents: read** on `FrameStudio-cloud/keel`. It is private, so the runner cannot use its own token. |
 | `VITE_SUPABASE_URL` | Yes | Passed to the Keel build; Vite bakes it into the bundle. |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Same. The anon key is public by design, but it is still supplied as a secret so no value is committed. |
-| `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID` | No | Without them the build succeeds but analytics, payments and Google Calendar are silently absent from the installer. |
+| `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`, `VITE_FRAMESTUDIO_SUPABASE_URL`, `VITE_FRAMESTUDIO_SUPABASE_ANON_KEY` | No | Without them the build succeeds but analytics, payments, Google Calendar and the FrameStudio blog are silently absent from the installer. |
 
 The workflow fails fast with a `::error::` annotation naming whichever secret is
 missing, rather than failing later inside Vite with a bare

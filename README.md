@@ -84,8 +84,10 @@ Required repository secrets:
 | `VITE_SUPABASE_ANON_KEY` | Baked into the Keel bundle at build time |
 
 Optional but recommended: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`,
-`VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`. Without them the build
-succeeds but those features are silently absent from the installer.
+`VITE_PAYSTACK_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`,
+`VITE_FRAMESTUDIO_SUPABASE_URL`, `VITE_FRAMESTUDIO_SUPABASE_ANON_KEY`. Without
+them the build succeeds but those features are silently absent from the
+installer.
 
 ## The Keel contract
 
